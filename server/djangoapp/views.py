@@ -74,22 +74,27 @@ def register(request):
 
 
 def get_cars(request):
-    count = CarMake.objects.filter().count()
-    print(count)
+    try:
+        count = CarMake.objects.count()
+        print(count)
 
-    if count == 0:
-        initiate()
+        if count == 0:
+            initiate()
 
-    car_models = CarModel.objects.select_related('car_make')
-    cars = []
+        car_models = CarModel.objects.select_related('car_make')
+        cars = []
 
-    for car_model in car_models:
-        cars.append({
-            "CarModel": car_model.name,
-            "CarMake": car_model.car_make.name
-        })
+        for car_model in car_models:
+            cars.append({
+                "CarModel": car_model.name,
+                "CarMake": car_model.car_make.name
+            })
 
-    return JsonResponse({"CarModels": cars})
+        return JsonResponse({"CarModels": cars})
+
+    except Exception as e:
+        print(e)
+        return JsonResponse({"CarModels": []})
 
 
 # Update the `get_dealerships` render list of dealerships all by default,
@@ -119,14 +124,24 @@ def get_dealer_reviews(request, dealer_id):
         reviews = get_request(endpoint)
 
         for review_detail in reviews:
-            response = analyze_review_sentiments(review_detail['review'])
-            print(response)
-            review_detail['sentiment'] = response['sentiment']
+            try:
+                response = analyze_review_sentiments(review_detail['review'])
+                print(response)
+
+                if response and 'sentiment' in response:
+                    review_detail['sentiment'] = response['sentiment']
+                else:
+                    review_detail['sentiment'] = 'neutral'
+
+            except Exception as e:
+                print(e)
+                review_detail['sentiment'] = 'neutral'
 
         return JsonResponse({"status": 200, "reviews": reviews})
     else:
         return JsonResponse({"status": 400, "message": "Bad Request"})
 
+@csrf_exempt
 def add_review(request):
     if request.user.is_anonymous == False:
         data = json.loads(request.body)
